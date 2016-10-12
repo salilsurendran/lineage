@@ -104,8 +104,8 @@ object SparkNavigatorLineage {
       .reduceByKey(_ + _)
     counts.saveAsTextFile("/user/root/counts_" + System.currentTimeMillis())
 
-    val dfFromJson = spark.read.json("hdfs://user/root/json/people1.json",
-      "hdfs://user/root/json/people2.json", "hdfs://user/root/json/people3.json")
+    val dfFromJson = spark.read.json("/user/root/json/people1.json",
+      "/user/root/json/people2.json", "/user/root/json/people3.json")
       .select("name","age","phone","zip")
     dfFromJson.filter(dfFromJson("age") > 25).write.partitionBy("age","zip")
       .save("/user/root/partitioned_example_"+ System.currentTimeMillis())
