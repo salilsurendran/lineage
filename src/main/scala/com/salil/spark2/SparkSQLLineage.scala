@@ -104,6 +104,7 @@ object SparkNavigatorLineage {
       .reduceByKey(_ + _)
     counts.saveAsTextFile("/user/root/counts_" + System.currentTimeMillis())
 
+    //This is a test
     val dfFromJson = spark.read.json("/user/root/json/people1.json",
       "/user/root/json/people2.json", "/user/root/json/people3.json")
       .select("name","age","phone","zip")
