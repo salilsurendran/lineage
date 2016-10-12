@@ -1,6 +1,11 @@
 package com.salil.spark2
 
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.sql.{DataFrame, SQLContext, SparkSession}
+import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project}
+import org.apache.spark.sql.hive.HiveContext
+
+
 /**
   * Created by salilsurendran on 9/20/16.
   */
@@ -58,6 +63,52 @@ object SQLSparkLineage {
     for(i <- 0 until df.inputFiles.length){
       println("i'th element is: " + df.inputFiles(i));
     }
+    val l = List[LogicalPlan]()
+    df.queryExecution.optimizedPlan.children.foldLeft(l)((acc, plan) => plan match {
+      case Project(_,_) => plan::acc
+      case _ => acc
+    })
+  }
+
+  /*def myMethod[T >: LogicalPlan](l:List[T], df:DataFrame): Unit ={
+    df.queryExecution.optimizedPlan.children.foldLeft(l)((acc, plan) => plan match {
+      case Project => plan::acc
+      case _ => acc
+    })
+  }*/
+}
+
+object SparkNavigatorLineage {
+
+  def main(args: Array[String]): Unit = {
+    val spark = SparkSession
+      .builder()
+      .appName("Spark Lineage Application")
+      .enableHiveSupport()
+      .getOrCreate();
+
+    val dfFromHive = spark.sql("from sample_07 select code,description,salary")
+    dfFromHive.select("code", "description").write.saveAsTable("new_sample_07_" + System.currentTimeMillis())
+
+    val dfCustomers = spark.read.load("/user/root/customers.parquet").select("id","name")
+    dfCustomers.write.save("/user/root/abc_" + System.currentTimeMillis() + ".parquet")
+
+    val rdd = spark.sparkContext.textFile("/user/root/people.csv")
+    val outputRDD = rdd.map(_.split(",")).filter(p => p(1).length > 8).map(x => x(0) + ":" + x(1))
+    outputRDD.saveAsTextFile("/user/root/output_" + System.currentTimeMillis())
+    outputRDD.saveAsTextFile("s3://cloudera-dev-s3bugblitz/salil/people_" + System.currentTimeMillis())
+
+    val globRdd = spark.sparkContext.textFile("/user/root/glob/*.txt")
+    val counts = globRdd.flatMap(line => line.split(" "))
+      .map(word => (word, 1))
+      .reduceByKey(_ + _)
+    counts.saveAsTextFile("/user/root/counts_" + System.currentTimeMillis())
+
+    val dfFromJson = spark.read.json("hdfs://user/root/json/people1.json",
+      "hdfs://user/root/json/people2.json", "hdfs://user/root/json/people3.json")
+      .select("name","age","phone","zip")
+    dfFromJson.filter(dfFromJson("age") > 25).write.partitionBy("age","zip")
+      .save("/user/root/partitioned_example_"+ System.currentTimeMillis())
   }
 }
 
