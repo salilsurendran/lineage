@@ -104,6 +104,10 @@ object SparkNavigatorLineage {
       .reduceByKey(_ + _)
     counts.saveAsTextFile("/user/root/counts_" + System.currentTimeMillis())
 
+    val wordCount = globRdd.flatMap(line => line.split(" ")).count
+    val wordCountRDD = spark.sparkContext.parallelize(Seq(wordCount))
+    wordCountRDD.saveAsTextFile("/user/root/res1")
+
     //This is a test
     val dfFromJson = spark.read.json("/user/root/json/people1.json",
       "/user/root/json/people2.json", "/user/root/json/people3.json")
