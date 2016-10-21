@@ -1,9 +1,12 @@
 package com.salil.spark2
 
+import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.{DataFrame, SQLContext, SparkSession}
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project}
+import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.hive.HiveContext
+import org.apache.spark.sql.util.QueryExecutionListener
 
 
 /**
@@ -46,6 +49,18 @@ object SQLSparkLineage {
       //.master("local[4]")
       .enableHiveSupport()
       .getOrCreate();
+
+    sparkSession.listenerManager.register(new QueryExecutionListener {@DeveloperApi
+    override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
+      println("In Query ExecutionListener Failure")
+    }
+
+      @DeveloperApi
+      override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
+        println("In Query ExecutionListener Success")
+        println("Optimized Plan String + " + qe.optimizedPlan.toString())
+      }
+    })
     // val hiveContext = new org.apache.spark.sql.hive.HiveContext(new SparkContext())
     if (sparkSession.sql("SHOW TABLES").collect().length == 0) {
       sparkSession.sql("CREATE TABLE sample_07 (code string,description string,total_emp int,salary int) ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' STORED AS TextFile")
@@ -64,9 +79,12 @@ object SQLSparkLineage {
       println("i'th element is: " + df.inputFiles(i));
     }
     val l = List[LogicalPlan]()
-    df.queryExecution.optimizedPlan.children.foldLeft(l)((acc, plan) => plan match {
+    df.queryExecution.optimizedPlan.productIterator.foldLeft(List[Any]())((acc, plan) => plan match {
       case Project(_,_) => plan::acc
-      case _ => acc
+      case _ => {
+        System.out.println(plan)
+        acc
+      }
     })
   }
 
@@ -87,7 +105,20 @@ object SparkNavigatorLineage {
       .enableHiveSupport()
       .getOrCreate();
 
+    spark.listenerManager.register(new QueryExecutionListener {@DeveloperApi
+    override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
+      println("In Query ExecutionListener Failure")
+    }
+
+      @DeveloperApi
+      override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
+        println("In Query ExecutionListener Success")
+        println("Optimized Plan String + " + qe.optimizedPlan.toString())
+      }
+    })
+
     val dfFromHive = spark.sql("from sample_07 select code,description,salary")
+    val dfFromHive2 =
     dfFromHive.select("code", "description").write.saveAsTable("new_sample_07_" + System.currentTimeMillis())
 
     val dfCustomers = spark.read.load("/user/root/customers.parquet").select("id","name")
@@ -106,7 +137,7 @@ object SparkNavigatorLineage {
 
     val wordCount = globRdd.flatMap(line => line.split(" ")).count
     val wordCountRDD = spark.sparkContext.parallelize(Seq(wordCount))
-    wordCountRDD.saveAsTextFile("/user/root/res1")
+    wordCountRDD.saveAsTextFile("/user/root/wordcount")
 
     //This is a test
     val dfFromJson = spark.read.json("/user/root/json/people1.json",
