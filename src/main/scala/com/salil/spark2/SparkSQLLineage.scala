@@ -5,7 +5,6 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.{DataFrame, SQLContext, SparkSession}
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project}
 import org.apache.spark.sql.execution.QueryExecution
-import org.apache.spark.sql.hive.HiveContext
 import org.apache.spark.sql.util.QueryExecutionListener
 
 
@@ -57,7 +56,7 @@ object SQLSparkLineage {
 
       @DeveloperApi
       override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
-        println("In Query ExecutionListener Success")
+        println("In Query ExecutionListener Success : " + funcName)
         println("Optimized Plan String + " + qe.optimizedPlan.toString())
       }
     })
@@ -76,17 +75,20 @@ object SQLSparkLineage {
     println("explain : " )
     df.explain(true)
     for(i <- 0 until df.inputFiles.length){
-      println("i'th element is: " + df.inputFiles(i));
+      println("i'th element is this: " + df.inputFiles(i));
     }
     val l = List[LogicalPlan]()
     df.queryExecution.optimizedPlan.productIterator.foldLeft(List[Any]())((acc, plan) => plan match {
       case Project(_,_) => plan::acc
       case _ => {
-        System.out.println(plan)
+        //System.out.println(plan)
         acc
       }
     })
   }
+
+  Thread.sleep(100000)
+  println("slept for 100 seconds")
 
   /*def myMethod[T >: LogicalPlan](l:List[T], df:DataFrame): Unit ={
     df.queryExecution.optimizedPlan.children.foldLeft(l)((acc, plan) => plan match {
@@ -104,6 +106,18 @@ object SparkNavigatorLineage {
       .appName("Spark Lineage Application")
       .enableHiveSupport()
       .getOrCreate();
+
+    spark.sqlContext.listenerManager.register(new QueryExecutionListener {@DeveloperApi
+    override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
+      println("In SQLContext Query ExecutionListener Failure")
+    }
+
+      @DeveloperApi
+      override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
+        println("In SQLContext Query ExecutionListener Success")
+        println("SQLContext  Optimized Plan String + " + qe.optimizedPlan.toString())
+      }
+    })
 
     spark.listenerManager.register(new QueryExecutionListener {@DeveloperApi
     override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
@@ -137,7 +151,7 @@ object SparkNavigatorLineage {
 
     val wordCount = globRdd.flatMap(line => line.split(" ")).count
     val wordCountRDD = spark.sparkContext.parallelize(Seq(wordCount))
-    wordCountRDD.saveAsTextFile("/user/root/wordcount")
+    wordCountRDD.saveAsTextFile("/user/root/wordcount_" + System.currentTimeMillis())
 
     //This is a test
     val dfFromJson = spark.read.json("/user/root/json/people1.json",
