@@ -182,8 +182,7 @@ object SparkNavigatorLineage {
     val groupedDF2 = groupedDF.mean()
     groupedDF2.show()
 
-    case class CSVStudent(name: String, subject: String, age:Int, marks:Int)
-    case class JSONStudent(name: String, subject: String, fees:Int, marks:Int)
+
 
     import spark.implicits._
     val jsonDF = spark.read.json("/user/root/arts.json")
@@ -192,5 +191,8 @@ object SparkNavigatorLineage {
     val csvDS2 = csvDS.join(jsonDF,jsonDF("Name")===csvDS("name")).select("age","fees").filter("fees > 150")
     csvDS2.show()
   }
+
+  case class CSVStudent(name: String, subject: String, age:Int, marks:Int)
+  case class JSONStudent(name: String, subject: String, fees:Int, marks:Int)
 }
 
