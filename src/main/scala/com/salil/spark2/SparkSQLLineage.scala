@@ -2,10 +2,14 @@ package com.salil.spark2
 
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.{DataFrame, SQLContext, SparkSession}
+import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project}
 import org.apache.spark.sql.execution.QueryExecution
+import org.apache.spark.sql.types.{StringType, StructField, StructType}
 import org.apache.spark.sql.util.QueryExecutionListener
+import org.apache.spark.sql.types.{StringType, StructField, StructType}
+
+import scala.collection.JavaConversions._
 
 
 /**
@@ -159,6 +163,34 @@ object SparkNavigatorLineage {
       .select("name","age","phone","zip")
     dfFromJson.filter(dfFromJson("age") > 25).write.partitionBy("age","zip")
       .save("/user/root/partitioned_example_"+ System.currentTimeMillis())
+
+
+    val rdd2 = spark.sparkContext.textFile("/user/root/people.csv")
+    val schemaString = "first_name last_name code"
+    val schema = StructType(schemaString.split(" ").map(fieldName => StructField(fieldName, StringType, true)))
+
+    val rowRDD = rdd2.map(_.split(",")).map(p => Row(p(0), p(1), p(2)))
+    val peopleDataFrame = spark.createDataFrame(rowRDD, schema)
+
+    val df = spark.sql("select code,description,salary as sal from sample_07")
+    val df2 = df.join(peopleDataFrame,df.col("code").equalTo(peopleDataFrame("code")))
+    df2.take(2).foreach(println)
+    println("Count = " + df2.count)
+    df2.takeAsList(3).foreach(println)
+    val groupedDF = df2.groupBy(df2("first_name"))
+    println(groupedDF.count())
+    val groupedDF2 = groupedDF.mean()
+    groupedDF2.show()
+
+    case class CSVStudent(name: String, subject: String, age:Int, marks:Int)
+    case class JSONStudent(name: String, subject: String, fees:Int, marks:Int)
+
+    import spark.implicits._
+    val jsonDF = spark.read.json("/user/root/arts.json")
+    val csvDS:Dataset[CSVStudent] = spark.sparkContext.textFile("/user/root/students.csv").map(l => l.split(","))
+      .map(a => CSVStudent(a(0),a(1),a(2).toInt,a(3).toInt)).toDS()
+    val csvDS2 = csvDS.join(jsonDF,jsonDF("Name")===csvDS("name")).select("age","fees").filter("fees > 150")
+    csvDS2.show()
   }
 }
 
