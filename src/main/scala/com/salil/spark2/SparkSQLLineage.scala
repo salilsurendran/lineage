@@ -35,9 +35,9 @@ object SparkLineage {
     df.write.json("/user/root/sample_07_150k_json_" + System.currentTimeMillis())
     //df.write.text("/user/root/sample_07_150k_text_" + System.currentTimeMillis())
     println("toString : " + df.toString())
-    println("explain : " )
+    println("explain : ")
     df.explain(true)
-    for(i <- 0 until df.inputFiles.length){
+    for (i <- 0 until df.inputFiles.length) {
       println("i'th element is: " + df.inputFiles(i));
     }
   }
@@ -53,10 +53,11 @@ object SQLSparkLineage {
       .enableHiveSupport()
       .getOrCreate();
 
-    sparkSession.listenerManager.register(new QueryExecutionListener {@DeveloperApi
-    override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
-      println("In Query ExecutionListener Failure")
-    }
+    sparkSession.listenerManager.register(new QueryExecutionListener {
+      @DeveloperApi
+      override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
+        println("In Query ExecutionListener Failure")
+      }
 
       @DeveloperApi
       override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
@@ -76,14 +77,14 @@ object SQLSparkLineage {
     df.write.json("/user/root/sample_07_150k_json_" + System.currentTimeMillis())
     //df.write.text("/user/root/sample_07_150k_text_" + System.currentTimeMillis())
     println("toString : " + df.toString())
-    println("explain : " )
+    println("explain : ")
     df.explain(true)
-    for(i <- 0 until df.inputFiles.length){
+    for (i <- 0 until df.inputFiles.length) {
       println("i'th element is this: " + df.inputFiles(i));
     }
     val l = List[LogicalPlan]()
     df.queryExecution.optimizedPlan.productIterator.foldLeft(List[Any]())((acc, plan) => plan match {
-      case Project(_,_) => plan::acc
+      case Project(_, _) => plan :: acc
       case _ => {
         //System.out.println(plan)
         acc
@@ -111,10 +112,11 @@ object SparkNavigatorLineage {
       .enableHiveSupport()
       .getOrCreate();
 
-    spark.sqlContext.listenerManager.register(new QueryExecutionListener {@DeveloperApi
-    override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
-      println("In SQLContext Query ExecutionListener Failure")
-    }
+    spark.sqlContext.listenerManager.register(new QueryExecutionListener {
+      @DeveloperApi
+      override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
+        println("In SQLContext Query ExecutionListener Failure")
+      }
 
       @DeveloperApi
       override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
@@ -123,10 +125,11 @@ object SparkNavigatorLineage {
       }
     })
 
-    spark.listenerManager.register(new QueryExecutionListener {@DeveloperApi
-    override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
-      println("In Query ExecutionListener Failure")
-    }
+    spark.listenerManager.register(new QueryExecutionListener {
+      @DeveloperApi
+      override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
+        println("In Query ExecutionListener Failure")
+      }
 
       @DeveloperApi
       override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
@@ -137,9 +140,9 @@ object SparkNavigatorLineage {
 
     val dfFromHive = spark.sql("from sample_07 select code,description,salary")
     val dfFromHive2 =
-    dfFromHive.select("code", "description").write.saveAsTable("new_sample_07_" + System.currentTimeMillis())
+      dfFromHive.select("code", "description").write.saveAsTable("new_sample_07_" + System.currentTimeMillis())
 
-    val dfCustomers = spark.read.load("/user/root/customers.parquet").select("id","name")
+    val dfCustomers = spark.read.load("/user/root/customers.parquet").select("id", "name")
     dfCustomers.write.save("/user/root/abc_" + System.currentTimeMillis() + ".parquet")
 
     val rdd = spark.sparkContext.textFile("/user/root/people.csv")
@@ -160,9 +163,9 @@ object SparkNavigatorLineage {
     //This is a test
     val dfFromJson = spark.read.json("/user/root/json/people1.json",
       "/user/root/json/people2.json", "/user/root/json/people3.json")
-      .select("name","age","phone","zip")
-    dfFromJson.filter(dfFromJson("age") > 25).write.partitionBy("age","zip")
-      .save("/user/root/partitioned_example_"+ System.currentTimeMillis())
+      .select("name", "age", "phone", "zip")
+    dfFromJson.filter(dfFromJson("age") > 25).write.partitionBy("age", "zip")
+      .save("/user/root/partitioned_example_" + System.currentTimeMillis())
 
 
     val rdd2 = spark.sparkContext.textFile("/user/root/people.csv")
@@ -173,26 +176,56 @@ object SparkNavigatorLineage {
     val peopleDataFrame = spark.createDataFrame(rowRDD, schema)
 
     val df = spark.sql("select code,description,salary as sal from sample_07")
-    val df2 = df.join(peopleDataFrame,df.col("code").equalTo(peopleDataFrame("code")))
-    df2.take(2).foreach(println)
-    println("Count = " + df2.count)
-    df2.takeAsList(3).foreach(println)
+    val df2 = df.join(peopleDataFrame, df.col("code").equalTo(peopleDataFrame("code")))
+    df2.take(2).foreach(println) //SQL gets called and QueryExecutionListener.onSuccess also gets called
+    println("Count = " + df2.count) //SQL gets called and QueryExecutionListener.onSuccess also gets called
+    df2.takeAsList(3).foreach(println) //SQL gets called and QueryExecutionListener.onSuccess also gets called
     val groupedDF = df2.groupBy(df2("first_name"))
     println(groupedDF.count())
     val groupedDF2 = groupedDF.mean()
-    groupedDF2.show()
-
+    groupedDF2.show() //SQL gets called and QueryExecutionListener.onSuccess also gets called
 
 
     import spark.implicits._
-    val jsonDF = spark.read.json("/user/root/arts.json")
-    val csvDS:Dataset[CSVStudent] = spark.sparkContext.textFile("/user/root/students.csv").map(l => l.split(","))
-      .map(a => CSVStudent(a(0),a(1),a(2).toInt,a(3).toInt)).toDS()
-    val csvDS2 = csvDS.join(jsonDF,jsonDF("Name")===csvDS("name")).select("age","fees").filter("fees > 150")
-    csvDS2.show()
+    val jsonDF = spark.read.json("/user/root/arts.json") //job gets created
+    val csvDS: Dataset[CSVStudent] = spark.sparkContext.textFile("/user/root/students.csv").map(l => l.split(","))
+        .map(a => CSVStudent(a(0), a(1), a(2).toInt, a(3).toInt)).toDS()
+    val csvDS2 = csvDS.join(jsonDF, jsonDF("Name") === csvDS("name")).select("age", "fees").filter("fees > 150")
+    csvDS2.show() //SQL gets called and QueryExecutionListener.onSuccess also gets called
   }
 
-  case class CSVStudent(name: String, subject: String, age:Int, marks:Int)
-  case class JSONStudent(name: String, subject: String, fees:Int, marks:Int)
+
+  case class CSVStudent(name: String, subject: String, age: Int, marks: Int)
+
+  case class JSONStudent(name: String, subject: String, fees: Int, marks: Int)
+
+}
+
+object LineageFailure {
+  def main(args: Array[String]) {
+    val spark = SparkSession
+      .builder()
+      .appName("Java Spark Hive Example")
+      //.master("local[4]")
+      //.enableHiveSupport()
+      .getOrCreate();
+
+    spark.listenerManager.register(new QueryExecutionListener {
+      @DeveloperApi
+      override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
+        println("In Query ExecutionListener Failure")
+      }
+
+      @DeveloperApi
+      override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
+        println("In Query ExecutionListener Success")
+        println("Optimized Plan String + " + qe.optimizedPlan.toString())
+      }
+
+      val dfCustomers = spark.read.load("/user/root/customers.parquet").select("id", "name")
+      dfCustomers.take(2)
+      dfCustomers.write.save("/user/root/abc_" + System.currentTimeMillis() + ".parquet")
+    })
+  }
 }
 
