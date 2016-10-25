@@ -213,17 +213,17 @@ object LineageFailure {
     spark.listenerManager.register(new QueryExecutionListener {
       @DeveloperApi
       override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
-        println("In Query ExecutionListener Failure")
+        println("In Query ExecutionListener Failure:" + funcName)
       }
 
       @DeveloperApi
       override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
-        println("In Query ExecutionListener Success")
+        println("In Query ExecutionListener Success:" + funcName)
         println("Optimized Plan String + " + qe.optimizedPlan.toString())
       }
     })
 
-    spark.sqlContext.listenerManager.register(new QueryExecutionListener {
+    /*spark.sqlContext.listenerManager.register(new QueryExecutionListener {
       @DeveloperApi
       override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
         println("In SQLContext Query ExecutionListener Failure")
@@ -234,7 +234,7 @@ object LineageFailure {
         println("In SQLContext Query ExecutionListener Success")
         println("SQLContext  Optimized Plan String + " + qe.optimizedPlan.toString())
       }
-    })
+    })*/
 
     val dfCustomers = spark.read.load("/user/root/customers.parquet").select("id", "name")
     dfCustomers.take(2)
