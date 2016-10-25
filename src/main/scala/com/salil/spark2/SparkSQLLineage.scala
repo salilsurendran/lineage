@@ -221,10 +221,6 @@ object LineageFailure {
         println("In Query ExecutionListener Success")
         println("Optimized Plan String + " + qe.optimizedPlan.toString())
       }
-
-      val dfCustomers = spark.read.load("/user/root/customers.parquet").select("id", "name")
-      dfCustomers.take(2)
-      dfCustomers.write.save("/user/root/abc_" + System.currentTimeMillis() + ".parquet")
     })
 
     spark.sqlContext.listenerManager.register(new QueryExecutionListener {
@@ -239,6 +235,10 @@ object LineageFailure {
         println("SQLContext  Optimized Plan String + " + qe.optimizedPlan.toString())
       }
     })
+
+    val dfCustomers = spark.read.load("/user/root/customers.parquet").select("id", "name")
+    dfCustomers.take(2)
+    dfCustomers.write.save("/user/root/abc_" + System.currentTimeMillis() + ".parquet")
   }
 }
 
