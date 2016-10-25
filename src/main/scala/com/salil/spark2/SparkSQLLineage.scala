@@ -226,6 +226,19 @@ object LineageFailure {
       dfCustomers.take(2)
       dfCustomers.write.save("/user/root/abc_" + System.currentTimeMillis() + ".parquet")
     })
+
+    spark.sqlContext.listenerManager.register(new QueryExecutionListener {
+      @DeveloperApi
+      override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
+        println("In SQLContext Query ExecutionListener Failure")
+      }
+
+      @DeveloperApi
+      override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
+        println("In SQLContext Query ExecutionListener Success")
+        println("SQLContext  Optimized Plan String + " + qe.optimizedPlan.toString())
+      }
+    })
   }
 }
 
