@@ -239,6 +239,7 @@ object LineageFailure {
     val dfCustomers = spark.read.load("/user/root/customers.parquet").select("id", "name")
     dfCustomers.take(2)
     dfCustomers.write.save("/user/root/abc_" + System.currentTimeMillis() + ".parquet")
+    dfCustomers.write.save("/user/root/abc2_" + System.currentTimeMillis() + ".parquet")
   }
 }
 
