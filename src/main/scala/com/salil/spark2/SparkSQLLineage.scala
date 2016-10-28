@@ -245,7 +245,7 @@ object LineageFailure {
   }
 }
 
-object NavigatorLineageExample{
+object NavigatorLineageExample {
   def main(args: Array[String]) {
     val spark = SparkSession
       .builder()
@@ -268,13 +268,32 @@ object NavigatorLineageExample{
       @DeveloperApi
       override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
         println("In Query ExecutionListener Success:" + funcName)
-        IOUtils.copy(getClass.getResourceAsStream("lineage.json"),
-          new FileWriter(dir + File.separator + fileName + "-" + spark.sparkContext.applicationId + "-" + spark.sparkContext.applicationAttemptId))
+        val fileWriter =
+          new FileWriter(dir + File.separator + fileName + "-" + spark.sparkContext.applicationId + "-" + spark.sparkContext.applicationAttemptId)
+        try {
+          IOUtils.copy(getClass.getResourceAsStream("lineage.json"), fileWriter)
+        } finally {
+          fileWriter.flush()
+          fileWriter.close()
+        }
       }
-    })
-
-    val dfCustomers = spark.read.json(inputSource).select("name","age")
+    }
+    )
+    val dfCustomers = spark.read.json(inputSource).select("name", "age")
     dfCustomers.take(2)
+  }
+}
+
+
+object TestIO {
+  def main(args: Array[String]) {
+    import org.apache.commons.io.IOUtils
+    val dir = "/home/salilsurendran/WORK/lineage"
+    val fileWriter = new FileWriter(dir + File.separator + "lineage")
+    IOUtils.copy(getClass.getResourceAsStream("/lineage.json"), fileWriter)
+    fileWriter.flush()
+    fileWriter.close()
+    println("Done")
   }
 }
 
