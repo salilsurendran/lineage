@@ -272,7 +272,7 @@ object NavigatorLineageExample{
       }
     })
 
-    val dfCustomers = spark.read.load(inputSource).select("name","age")
+    val dfCustomers = spark.read.json(inputSource).select("name","age")
     dfCustomers.take(2)
   }
 }
