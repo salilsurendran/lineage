@@ -268,7 +268,7 @@ object NavigatorLineageExample{
       @DeveloperApi
       override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
         println("In Query ExecutionListener Success:" + funcName)
-        IOUtils.copy(getClass.getResourceAsStream("/lineage.json"),
+        IOUtils.copy(getClass.getResourceAsStream("lineage.json"),
           new FileWriter(dir + File.separator + fileName + "-" + spark.sparkContext.applicationId + "-" + spark.sparkContext.applicationAttemptId))
       }
     })
