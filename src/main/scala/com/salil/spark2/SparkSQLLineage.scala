@@ -1,5 +1,7 @@
 package com.salil.spark2
 
+import java.io.FileWriter
+
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql._
@@ -240,6 +242,38 @@ object LineageFailure {
     dfCustomers.take(2)
     dfCustomers.write.save("/user/root/abc_" + System.currentTimeMillis() + ".parquet")
     dfCustomers.write.save("/user/root/abc2_" + System.currentTimeMillis() + ".parquet")
+  }
+}
+
+object NavigatorLineageExample{
+  def main(args: Array[String]) {
+    val spark = SparkSession
+      .builder()
+      .appName("Java Spark Hive Example")
+      .getOrCreate();
+
+    import org.apache.commons.io.IOUtils
+
+    val inputSource = if (args.length > 0) args(0) else "/user/root/people.json"
+    val dir = if (args.length > 1) args(1) else "/var/log/lineage/spark"
+    val fileName = if (args.length > 2) args(2) else "lineage"
+
+    spark.listenerManager.register(new QueryExecutionListener {
+      @DeveloperApi
+      override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
+        println("In Query ExecutionListener Failure:" + funcName)
+      }
+
+      @DeveloperApi
+      override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
+        println("In Query ExecutionListener Success:" + funcName)
+        IOUtils.copy(getClass.getResourceAsStream("/lineage.json"),
+          new FileWriter(dir + fileName + "-" + spark.sparkContext.applicationId + "-" + spark.sparkContext.applicationAttemptId))
+      }
+    })
+
+    val dfCustomers = spark.read.load(inputSource).select("name","age")
+    dfCustomers.take(2)
   }
 }
 
