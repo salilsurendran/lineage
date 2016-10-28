@@ -1,6 +1,6 @@
 package com.salil.spark2
 
-import java.io.FileWriter
+import java.io.{File, FileWriter}
 
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.{SparkConf, SparkContext}
@@ -254,6 +254,7 @@ object NavigatorLineageExample{
 
     import org.apache.commons.io.IOUtils
 
+
     val inputSource = if (args.length > 0) args(0) else "/user/root/people.json"
     val dir = if (args.length > 1) args(1) else "/var/log/lineage/spark"
     val fileName = if (args.length > 2) args(2) else "lineage"
@@ -268,7 +269,7 @@ object NavigatorLineageExample{
       override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
         println("In Query ExecutionListener Success:" + funcName)
         IOUtils.copy(getClass.getResourceAsStream("/lineage.json"),
-          new FileWriter(dir + fileName + "-" + spark.sparkContext.applicationId + "-" + spark.sparkContext.applicationAttemptId))
+          new FileWriter(dir + File.separator + fileName + "-" + spark.sparkContext.applicationId + "-" + spark.sparkContext.applicationAttemptId))
       }
     })
 
