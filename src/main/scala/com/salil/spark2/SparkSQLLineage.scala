@@ -67,11 +67,11 @@ object SQLSparkLineage {
         println("Optimized Plan String + " + qe.optimizedPlan.toString())
       }
 
-      override def onDataFrameWriterSucess(funcName: String, qe: QueryExecution, dataFrameWriter:
-      DataFrameWriter[_], durationNs: Long): Unit = ???
+      override def onDataFrameWriterSucess(qe: QueryExecution, options: Map[String, String],
+                                           durationNs: Long): Unit = ???
 
-      override def onDataFrameWriterFailure(funcName: String, qe: QueryExecution, dataFrameWriter
-      : DataFrameWriter[_], exception: Exception): Unit = ???
+      override def onDataFrameWriterFailure(qe: QueryExecution, options: Map[String, String],
+                                            exception: Exception): Unit = ???
     })
     // val hiveContext = new org.apache.spark.sql.hive.HiveContext(new SparkContext())
     if (sparkSession.sql("SHOW TABLES").collect().length == 0) {
@@ -132,15 +132,16 @@ object SparkNavigatorLineage {
         println("Optimized Plan String + " + qe.optimizedPlan.toString())
       }
 
-      override def onDataFrameWriterSucess(funcName: String, qe: QueryExecution, dataFrameWriter:
-      DataFrameWriter[_], durationNs: Long): Unit = {
+      override def onDataFrameWriterSucess(qe: QueryExecution, options:Map[String, String], durationNs: Long): Unit = {
         println("In DataFrameWriterListener Success")
-        println("funcName = " + funcName)
+        //println("funcName = " + funcName)
         println("DataFrameWriterListener Optimized Plan String  " + qe.optimizedPlan.toString())
+        println("DataFrameWriter properties:")
+        options.foreach(x => println(x._1 + ":" + x._2))
       }
 
-      override def onDataFrameWriterFailure(funcName: String, qe: QueryExecution, dataFrameWriter
-      : DataFrameWriter[_], exception: Exception): Unit = {
+      override def onDataFrameWriterFailure(qe: QueryExecution,options:Map[String, String],
+                                            exception: Exception): Unit = {
         println("In DataFrameWriterListener Failure")
       }
     })
@@ -229,11 +230,11 @@ object LineageFailure {
         println("Optimized Plan String + " + qe.optimizedPlan.toString())
       }
 
-      override def onDataFrameWriterSucess(funcName: String, qe: QueryExecution, dataFrameWriter:
-      DataFrameWriter[_], durationNs: Long): Unit = ???
+      override def onDataFrameWriterSucess(qe: QueryExecution, options: Map[String, String],
+                                           durationNs: Long): Unit = ???
 
-      override def onDataFrameWriterFailure(funcName: String, qe: QueryExecution, dataFrameWriter
-      : DataFrameWriter[_], exception: Exception): Unit = ???
+      override def onDataFrameWriterFailure(qe: QueryExecution, options: Map[String, String],
+                                            exception: Exception): Unit = ???
     })
 
     /*spark.sqlContext.listenerManager.register(new QueryExecutionListener {
@@ -289,11 +290,11 @@ object NavigatorLineageExample {
         }
       }
 
-      override def onDataFrameWriterSucess(funcName: String, qe: QueryExecution, dataFrameWriter:
-      DataFrameWriter[_], durationNs: Long): Unit = ???
+      override def onDataFrameWriterSucess(qe: QueryExecution, options: Map[String, String],
+                                           durationNs: Long): Unit = ???
 
-      override def onDataFrameWriterFailure(funcName: String, qe: QueryExecution, dataFrameWriter
-      : DataFrameWriter[_], exception: Exception): Unit = ???
+      override def onDataFrameWriterFailure(qe: QueryExecution, options: Map[String, String],
+                                            exception: Exception): Unit = ???
     }
     )
     val dfCustomers = spark.read.json(inputSource).select("name", "age")
