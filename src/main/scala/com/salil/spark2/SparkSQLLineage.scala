@@ -166,7 +166,7 @@ object SparkNavigatorLineage {
             else acc
             case _ => acc
           })
-          aList.foreach(a => println(a.name + ":" + a.qualifier.getOrElse(""))
+          aList.foreach(a => println(a.name + ":" + a.qualifier.getOrElse("")))
         }
         else
           println("No Projections found")
