@@ -5,6 +5,7 @@ import java.io.{File, FileWriter}
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql._
+import org.apache.spark.sql.catalyst.expressions.{Alias, AttributeReference}
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project}
 import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
@@ -27,7 +28,8 @@ object SparkLineage {
       .getOrCreate();
     // val hiveContext = new org.apache.spark.sql.hive.HiveContext(new SparkContext())
     if (sparkSession.sql("SHOW TABLES").collect().length == 0) {
-      sparkSession.sql("CREATE TABLE sample_07 (code string,description string,total_emp int,salary int) ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' STORED AS TextFile")
+      sparkSession.sql("CREATE TABLE sample_07 (code string,description string,total_emp int," +
+        "salary int) ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' STORED AS TextFile")
       sparkSession.sql("LOAD DATA INPATH '/user/root/sample_07.csv' OVERWRITE INTO TABLE sample_07")
     }
     var df = sparkSession.sql(args(0))
@@ -75,7 +77,8 @@ object SQLSparkLineage {
     })
     // val hiveContext = new org.apache.spark.sql.hive.HiveContext(new SparkContext())
     if (sparkSession.sql("SHOW TABLES").collect().length == 0) {
-      sparkSession.sql("CREATE TABLE sample_07 (code string,description string,total_emp int,salary int) ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' STORED AS TextFile")
+      sparkSession.sql("CREATE TABLE sample_07 (code string,description string,total_emp int," +
+        "salary int) ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' STORED AS TextFile")
       sparkSession.sql("LOAD DATA INPATH '/user/root/sample_07.csv' OVERWRITE INTO TABLE sample_07")
     }
     var df = sparkSession.sql(args(0))
@@ -91,7 +94,8 @@ object SQLSparkLineage {
       println("i'th element is this: " + df.inputFiles(i));
     }
     val l = List[LogicalPlan]()
-    df.queryExecution.optimizedPlan.productIterator.foldLeft(List[Any]())((acc, plan) => plan match {
+    df.queryExecution.optimizedPlan.productIterator.foldLeft(List[Any]())((acc, plan) => plan
+    match {
       case Project(_, _) => plan :: acc
       case _ => {
         //System.out.println(plan)
@@ -130,33 +134,60 @@ object SparkNavigatorLineage {
       override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
         println("In Query ExecutionListener Success")
         println("Optimized Plan String + " + qe.optimizedPlan.toString())
+        printAttributes(qe)
       }
 
-      override def onDataFrameWriterSucess(qe: QueryExecution, options:Map[String, String], durationNs: Long): Unit = {
+      override def onDataFrameWriterSucess(qe: QueryExecution, options: Map[String, String],
+                                           durationNs: Long): Unit = {
         println("In DataFrameWriterListener Success")
         //println("funcName = " + funcName)
         println("DataFrameWriterListener Optimized Plan String  " + qe.optimizedPlan.toString())
         println("DataFrameWriter properties:")
         options.foreach(x => println(x._1 + ":" + x._2))
+        printAttributes(qe)
       }
 
-      override def onDataFrameWriterFailure(qe: QueryExecution,options:Map[String, String],
+      override def onDataFrameWriterFailure(qe: QueryExecution, options: Map[String, String],
                                             exception: Exception): Unit = {
         println("In DataFrameWriterListener Failure")
+      }
+
+      def printAttributes(qe: QueryExecution) = {
+        println("Printing out AttributeReferences for each query")
+        val projOption = qe.optimizedPlan.collectFirst { case p@Project(_, _) => p }
+        if (projOption.isDefined) {
+          val aList = projOption.get.projectList.foldLeft(List[AttributeReference]())((acc, node)
+          => node
+
+          match {
+            case AttributeReference(_, _, _, _) => node.asInstanceOf[AttributeReference] :: acc
+            case Alias(child, _) => if (child.isInstanceOf[AttributeReference]) child
+              .asInstanceOf[AttributeReference] :: acc
+            else acc
+            case _ => acc
+          })
+          aList.foreach(a => println(a.name + ":" + a.qualifier.getOrElse(""))
+        }
+        else
+          println("No Projections found")
       }
     })
 
     val dfFromHive = spark.sql("from sample_07 select code,description,salary")
+    //DataFrameListener gets called
     val dfFromHive2 =
-      dfFromHive.select("code", "description").write.saveAsTable("new_sample_07_" + System.currentTimeMillis())
+      dfFromHive.select("code", "description").write.saveAsTable("new_sample_07_" + System
+        .currentTimeMillis())
 
     val dfCustomers = spark.read.load("/user/root/customers.parquet").select("id", "name")
+    //DataFrameListener gets called
     dfCustomers.write.save("/user/root/abc_" + System.currentTimeMillis() + ".parquet")
 
     val rdd = spark.sparkContext.textFile("/user/root/people.csv")
     val outputRDD = rdd.map(_.split(",")).filter(p => p(1).length > 8).map(x => x(0) + ":" + x(1))
     outputRDD.saveAsTextFile("/user/root/output_" + System.currentTimeMillis())
-    outputRDD.saveAsTextFile("s3://cloudera-dev-s3bugblitz/salil/people_" + System.currentTimeMillis())
+    outputRDD.saveAsTextFile("s3://cloudera-dev-s3bugblitz/salil/people_" + System
+      .currentTimeMillis())
 
     val globRdd = spark.sparkContext.textFile("/user/root/glob/*.txt")
     val counts = globRdd.flatMap(line => line.split(" "))
@@ -173,21 +204,26 @@ object SparkNavigatorLineage {
       "/user/root/json/people2.json", "/user/root/json/people3.json")
       .select("name", "age", "phone", "zip")
     dfFromJson.filter(dfFromJson("age") > 25).write.partitionBy("age", "zip")
-      .save("/user/root/partitioned_example_" + System.currentTimeMillis())
+      .save("/user/root/partitioned_example_" + System.currentTimeMillis()) //DataFrameListener
+    // gets called
 
 
     val rdd2 = spark.sparkContext.textFile("/user/root/people.csv")
     val schemaString = "first_name last_name code"
-    val schema = StructType(schemaString.split(" ").map(fieldName => StructField(fieldName, StringType, true)))
+    val schema = StructType(schemaString.split(" ").map(fieldName => StructField(fieldName,
+      StringType, true)))
 
     val rowRDD = rdd2.map(_.split(",")).map(p => Row(p(0), p(1), p(2)))
     val peopleDataFrame = spark.createDataFrame(rowRDD, schema)
 
     val df = spark.sql("select code,description,salary as sal from sample_07")
     val df2 = df.join(peopleDataFrame, df.col("code").equalTo(peopleDataFrame("code")))
-    df2.take(2).foreach(println) //SQL gets called and QueryExecutionListener.onSuccess also gets called
-    println("Count = " + df2.count) //SQL gets called and QueryExecutionListener.onSuccess also gets called
-    df2.takeAsList(3).foreach(println) //SQL gets called and QueryExecutionListener.onSuccess also gets called
+    df2.take(2).foreach(println) //SQL gets called and QueryExecutionListener.onSuccess also gets
+    // called
+    println("Count = " + df2.count) //SQL gets called and QueryExecutionListener.onSuccess also
+    // gets called
+    df2.takeAsList(3).foreach(println) //SQL gets called and QueryExecutionListener.onSuccess
+    // also gets called
     val groupedDF = df2.groupBy(df2("first_name"))
     println(groupedDF.count())
     val groupedDF2 = groupedDF.mean()
@@ -196,9 +232,11 @@ object SparkNavigatorLineage {
 
     import spark.implicits._
     val jsonDF = spark.read.json("/user/root/arts.json") //job gets created
-    val csvDS: Dataset[CSVStudent] = spark.sparkContext.textFile("/user/root/students.csv").map(l => l.split(","))
+    val csvDS: Dataset[CSVStudent] = spark.sparkContext.textFile("/user/root/students.csv").map(l
+      => l.split(","))
         .map(a => CSVStudent(a(0), a(1), a(2).toInt, a(3).toInt)).toDS()
-    val csvDS2 = csvDS.join(jsonDF, jsonDF("Name") === csvDS("name")).select("age", "fees").filter("fees > 150")
+    val csvDS2 = csvDS.join(jsonDF, jsonDF("Name") === csvDS("name")).select("age", "fees")
+      .filter("fees > 150")
     csvDS2.show() //SQL gets called and QueryExecutionListener.onSuccess also gets called
   }
 
@@ -281,7 +319,8 @@ object NavigatorLineageExample {
       override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
         println("In Query ExecutionListener Success:" + funcName)
         val fileWriter =
-          new FileWriter(dir + File.separator + fileName + "-" + spark.sparkContext.applicationId + "-" + spark.sparkContext.applicationAttemptId)
+          new FileWriter(dir + File.separator + fileName + "-" + spark.sparkContext.applicationId
+            + "-" + spark.sparkContext.applicationAttemptId)
         try {
           IOUtils.copy(getClass.getResourceAsStream("/lineage.json"), fileWriter)
         } finally {
