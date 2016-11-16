@@ -358,7 +358,7 @@ object TestConf {
   def main(args: Array[String]) {
     val spark = SparkSession
             .builder()
-            //.appName("Java Spark Hive Example")
+            .appName("Java Spark Hive Example")
             .getOrCreate()
     val conf = spark.sparkContext.getConf
     println("conf.getAll")
