@@ -363,8 +363,9 @@ object TestConf {
     val conf = spark.sparkContext.getConf
     println("conf.getAll")
    // conf.getAll.foreach(x => println(x._1 +":"+ x._2))
-    println("executor env getAll")
+    println("sysEnv foreach")
     sys.env.foreach(println)
+    println("executor env getAll")
     conf.getExecutorEnv.foreach(x => println(x._1 +":"+ x._2))
     /*val df = spark.read.json("/home/salilsurendran/WORK/lineage/datafiles/root/people.json")
             .select("name","age")
