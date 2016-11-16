@@ -1,19 +1,13 @@
 package com.salil.spark2
 
-import java.io.{File, FileWriter}
-
-import org.apache.spark.annotation.DeveloperApi
-import org.apache.spark.{SparkConf, SparkContext}
+import scala.collection.JavaConversions._
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.expressions.{Alias, AttributeReference}
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project}
 import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
-import org.apache.spark.sql.util.QueryExecutionListener
-import org.apache.spark.sql.types.{StringType, StructField, StructType}
-
-import scala.collection.JavaConversions._
-
 
 /**
   * Created by salilsurendran on 9/20/16.
@@ -57,24 +51,19 @@ object SQLSparkLineage {
       .enableHiveSupport()
       .getOrCreate();
 
-    sparkSession.listenerManager.register(new QueryExecutionListener {
+    /*sparkSession.listenerManager.register(new QueryExecutionListener {
       @DeveloperApi
       override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
         println("In Query ExecutionListener Failure")
       }
 
       @DeveloperApi
-      override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
+      override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long,map: Map()):
+      Unit = {
         println("In Query ExecutionListener Success : " + funcName)
         println("Optimized Plan String + " + qe.optimizedPlan.toString())
       }
-
-      override def onDataFrameWriterSucess(qe: QueryExecution, options: Map[String, String],
-                                           durationNs: Long): Unit = ???
-
-      override def onDataFrameWriterFailure(qe: QueryExecution, options: Map[String, String],
-                                            exception: Exception): Unit = ???
-    })
+    })*/
     // val hiveContext = new org.apache.spark.sql.hive.HiveContext(new SparkContext())
     if (sparkSession.sql("SHOW TABLES").collect().length == 0) {
       sparkSession.sql("CREATE TABLE sample_07 (code string,description string,total_emp int," +
@@ -124,8 +113,8 @@ object SparkNavigatorLineage {
       .enableHiveSupport()
       .getOrCreate();
 
-    spark.listenerManager.register(new QueryExecutionListener {
-      @DeveloperApi
+   /*spark.listenerManager.register(new QueryExecutionListener {
+      /*@DeveloperApi
       override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
         println("In Query ExecutionListener Failure")
       }
@@ -137,8 +126,8 @@ object SparkNavigatorLineage {
         printAttributes(qe)
       }
 
-      override def onDataFrameWriterSucess(qe: QueryExecution, options: Map[String, String],
-                                           durationNs: Long): Unit = {
+      override def onWriteSuccess(qe: QueryExecution, options: Map[String, String], durationNs:
+      Long): Unit = {
         println("In DataFrameWriterListener Success")
         //println("funcName = " + funcName)
         println("DataFrameWriterListener Optimized Plan String  " + qe.optimizedPlan.toString())
@@ -147,31 +136,46 @@ object SparkNavigatorLineage {
         printAttributes(qe)
       }
 
-      override def onDataFrameWriterFailure(qe: QueryExecution, options: Map[String, String],
-                                            exception: Exception): Unit = {
+      override def onWriteFailure(qe: QueryExecution, options: Map[String, String], exception: Exception): Unit = {
         println("In DataFrameWriterListener Failure")
-      }
+      }*/
 
-      def printAttributes(qe: QueryExecution) = {
-        println("Printing out AttributeReferences for each query")
-        val projOption = qe.optimizedPlan.collectFirst { case p@Project(_, _) => p }
-        if (projOption.isDefined) {
-          val aList = projOption.get.projectList.foldLeft(List[AttributeReference]())((acc, node)
-          => node
+
+
+     @DeveloperApi
+     override def onSuccess(
+                             funcName: String,
+                             qe: QueryExecution,
+                             durationNs: Long,
+                             extraParams: Map[String, String]): Unit = ???
+
+     @DeveloperApi
+     override def onFailure(
+                             funcName: String,
+                             qe: QueryExecution,
+                             exception: Exception,
+                             extraParams: Map[String, String]): Unit = ???
+   })*/
+
+    def printAttributes(qe: QueryExecution) = {
+      println("Printing out AttributeReferences for each query")
+      val projOption = qe.optimizedPlan.collectFirst { case p@Project(_, _) => p }
+      if (projOption.isDefined) {
+        val aList = projOption.get.projectList.foldLeft(List[AttributeReference]())((acc, node)
+        => node
 
           match {
             case AttributeReference(_, _, _, _) => node.asInstanceOf[AttributeReference] :: acc
             case Alias(child, _) => if (child.isInstanceOf[AttributeReference]) child
-              .asInstanceOf[AttributeReference] :: acc
+                                                                                .asInstanceOf[AttributeReference] :: acc
             else acc
             case _ => acc
           })
-          aList.foreach(a => println(a.name + ":" + a.qualifier.getOrElse("")))
-        }
-        else
-          println("No Projections found")
+        aList.foreach(a => println(a.name + ":" + a.qualifier.getOrElse("")))
       }
-    })
+      else
+        println("No Projections found")
+    }
 
     val dfFromHive = spark.sql("from sample_07 select code,description,salary")
     //DataFrameListener gets called
@@ -256,24 +260,19 @@ object LineageFailure {
       //.enableHiveSupport()
       .getOrCreate();
 
-    spark.listenerManager.register(new QueryExecutionListener {
-      @DeveloperApi
+    //spark.listenerManager.register(new QueryExecutionListener {
+     /* @DeveloperApi
       override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
         println("In Query ExecutionListener Failure:" + funcName)
       }
 
       @DeveloperApi
-      override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
+      override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long, map:
+      Map[String, String]):
+      Unit = {
         println("In Query ExecutionListener Success:" + funcName)
         println("Optimized Plan String + " + qe.optimizedPlan.toString())
-      }
-
-      override def onDataFrameWriterSucess(qe: QueryExecution, options: Map[String, String],
-                                           durationNs: Long): Unit = ???
-
-      override def onDataFrameWriterFailure(qe: QueryExecution, options: Map[String, String],
-                                            exception: Exception): Unit = ???
-    })
+    })*/
 
     /*spark.sqlContext.listenerManager.register(new QueryExecutionListener {
       @DeveloperApi
@@ -302,14 +301,12 @@ object NavigatorLineageExample {
       .appName("Java Spark Hive Example")
       .getOrCreate();
 
-    import org.apache.commons.io.IOUtils
-
 
     val inputSource = if (args.length > 0) args(0) else "/user/root/people.json"
     val dir = if (args.length > 1) args(1) else "/var/log/lineage/spark"
     val fileName = if (args.length > 2) args(2) else "lineage"
 
-    spark.listenerManager.register(new QueryExecutionListener {
+    /*spark.listenerManager.register(new QueryExecutionListener {
       @DeveloperApi
       override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
         println("In Query ExecutionListener Failure:" + funcName)
@@ -329,13 +326,12 @@ object NavigatorLineageExample {
         }
       }
 
-      override def onDataFrameWriterSucess(qe: QueryExecution, options: Map[String, String],
-                                           durationNs: Long): Unit = ???
+      override def onWriteSuccess(qe: QueryExecution, options: Map[String, String], durationNs:
+      Long): Unit = ???
 
-      override def onDataFrameWriterFailure(qe: QueryExecution, options: Map[String, String],
-                                            exception: Exception): Unit = ???
+      override def onWriteFailure(qe: QueryExecution, options: Map[String, String], exception: Exception): Unit = ???
     }
-    )
+    )*/
     val dfCustomers = spark.read.json(inputSource).select("name", "age")
     dfCustomers.take(2)
   }
@@ -344,13 +340,36 @@ object NavigatorLineageExample {
 
 object TestIO {
   def main(args: Array[String]) {
-    import org.apache.commons.io.IOUtils
+  /*  import org.apache.commons.io.IOUtils
     val dir = "/home/salilsurendran/WORK/lineage"
     val fileWriter = new FileWriter(dir + File.separator + "lineage")
     IOUtils.copy(getClass.getResourceAsStream("/lineage.json"), fileWriter)
     fileWriter.flush()
-    fileWriter.close()
+    fileWriter.close()*/
     println("Done")
+    val lineageObject = new LineageObject2()
+    val mapper = new ObjectMapper()
+    mapper.registerModule(DefaultScalaModule)
+    print(mapper.writeValueAsString(lineageObject))
+  }
+}
+
+object TestConf {
+  def main(args: Array[String]) {
+    val spark = SparkSession
+            .builder()
+            .appName("Java Spark Hive Example")
+            .getOrCreate()
+    val conf = spark.sparkContext.getConf
+    println("conf.getAll")
+   // conf.getAll.foreach(x => println(x._1 +":"+ x._2))
+    println("executor env getAll")
+    sys.env.foreach(println)
+    conf.getExecutorEnv.foreach(x => println(x._1 +":"+ x._2))
+    /*val df = spark.read.json("/home/salilsurendran/WORK/lineage/datafiles/root/people.json")
+            .select("name","age")
+    df.write.json("/home/salilsurendran/WORK/lineage/datafiles/root/people"+ System
+            .currentTimeMillis() + ".json")*/
   }
 }
 
