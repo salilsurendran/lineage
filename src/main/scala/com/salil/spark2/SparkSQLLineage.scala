@@ -367,7 +367,7 @@ object TestConf {
     sys.env.foreach(println)
     println("executor env getAll")
     conf.getExecutorEnv.foreach(x => println(x._1 +":"+ x._2))
-
+    println("TEst")
     /*val df = spark.read.json("/home/salilsurendran/WORK/lineage/datafiles/root/people.json")
             .select("name","age")
     df.write.json("/home/salilsurendran/WORK/lineage/datafiles/root/people"+ System
